@@ -168,7 +168,9 @@ class Wertumrechner extends IPSModule
         if (!IPS_VariableProfileExists($profile)) {
             IPS_CreateVariableProfile($profile, VARIABLETYPE_FLOAT);
             IPS_SetVariableProfileText($profile, '', ' ' . $unit);
-            IPS_SetVariableProfileDigits($profile, $unit === 'kW' ? 3 : 2);
+        }
+        if (IPS_GetVariableProfile($profile)['Digits'] !== 2) {
+            IPS_SetVariableProfileDigits($profile, 2);
         }
         return $profile;
     }
