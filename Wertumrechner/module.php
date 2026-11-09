@@ -16,48 +16,161 @@ class Wertumrechner extends IPSModule
         $this->RegisterPropertyFloat('Voltage1', 230.0);
         $this->RegisterPropertyFloat('Voltage3', 400.0);
         $this->RegisterPropertyFloat('PowerFactor', 1.0);
+        $this->RegisterPropertyString('Sources', '');
         $this->RegisterAttributeInteger('SubscribedSource', 0);
+        $this->RegisterAttributeString('Subscriptions', '[]');
+        $this->RegisterAttributeString('ManagedOutputs', '');
+    }
+
+    public function GetConfigurationForm()
+    {
+        $form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
+        $form['elements'][1]['values'] = $this->GetSources();
+        return json_encode($form);
     }
 
     public function ApplyChanges()
     {
         parent::ApplyChanges();
 
-        $previous = $this->ReadAttributeInteger('SubscribedSource');
-        if ($previous > 0) {
-            $this->UnregisterMessage($previous, VM_UPDATE);
-            $this->UnregisterReference($previous);
+        $previous = json_decode($this->ReadAttributeString('Subscriptions'), true);
+        $legacySubscription = $this->ReadAttributeInteger('SubscribedSource');
+        if ($legacySubscription > 0) {
+            $previous[] = $legacySubscription;
+            $this->WriteAttributeInteger('SubscribedSource', 0);
         }
-        $this->WriteAttributeInteger('SubscribedSource', 0);
 
-        foreach (self::UNITS as $position => $unit) {
-            $enabled = $this->ReadPropertyBoolean('Output' . $unit);
-            $profile = 'Wertumrechner.' . $unit;
-            if ($enabled && !IPS_VariableProfileExists($profile)) {
-                IPS_CreateVariableProfile($profile, VARIABLETYPE_FLOAT);
-                IPS_SetVariableProfileText($profile, '', ' ' . $unit);
-                IPS_SetVariableProfileDigits($profile, $unit === 'kW' ? 3 : 2);
+        $sources = [];
+        $outputs = [];
+        $status = 102;
+        foreach ($this->GetSources() as $row) {
+            $source = (int) ($row['Source'] ?? 0);
+            if (isset($sources[$source]) || !$this->IsNumericSource($source)) {
+                $status = 201;
+                continue;
             }
-            $this->MaintainVariable('Result' . $unit, 'Ergebnis ' . $unit, VARIABLETYPE_FLOAT, $profile, $position, $enabled);
+            $sources[$source] = $row;
+            foreach (self::UNITS as $unit) {
+                if (!empty($row['Output' . $unit])) {
+                    $ident = $this->OutputIdent($source, $unit);
+                    $this->MaintainVariable($ident, $this->OutputName($source, $unit), VARIABLETYPE_FLOAT,
+                        $this->EnsureProfile($unit), count($outputs), true);
+                    $this->RenameOutput($source, $unit);
+                    $outputs[] = $ident;
+                }
+            }
+            $resultStatus = $this->UpdateResults($source, $row);
+            if ($status === 102) {
+                $status = $resultStatus;
+            }
         }
 
-        $source = $this->ReadPropertyInteger('Source');
-        if (!$this->IsNumericSource($source)) {
-            $this->SetStatus(201);
-            return;
+        $managed = $this->ReadAttributeString('ManagedOutputs');
+        $oldOutputs = $managed === '' ? ['ResultW', 'ResultkW', 'ResultA'] : json_decode($managed, true);
+        foreach (array_diff($oldOutputs, $outputs) as $ident) {
+            if (@IPS_GetObjectIDByIdent($ident, $this->InstanceID) !== false) {
+                $this->UnregisterVariable($ident);
+            }
         }
+        $this->WriteAttributeString('ManagedOutputs', json_encode($outputs));
 
-        $this->RegisterReference($source);
-        $this->RegisterMessage($source, VM_UPDATE);
-        $this->WriteAttributeInteger('SubscribedSource', $source);
-        $this->UpdateResults($source);
+        $current = array_keys($sources);
+        foreach (array_diff($previous, $current) as $source) {
+            $this->UnregisterMessage($source, VM_UPDATE);
+            $this->UnregisterMessage($source, OM_CHANGENAME);
+            $this->UnregisterReference($source);
+        }
+        foreach ($current as $source) {
+            $this->RegisterReference($source);
+            $this->RegisterMessage($source, VM_UPDATE);
+            $this->RegisterMessage($source, OM_CHANGENAME);
+        }
+        $this->WriteAttributeString('Subscriptions', json_encode($current));
+        $this->SetStatus($status);
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
     {
-        if ($Message === VM_UPDATE && $SenderID === $this->ReadAttributeInteger('SubscribedSource')) {
-            $this->UpdateResults($SenderID);
+        if (!in_array($Message, [VM_UPDATE, OM_CHANGENAME], true) || !$this->IsNumericSource($SenderID)) {
+            return;
         }
+        foreach ($this->GetSources() as $row) {
+            if ((int) ($row['Source'] ?? 0) !== $SenderID) {
+                continue;
+            }
+            if ($Message === VM_UPDATE) {
+                $status = $this->UpdateResults($SenderID, $row);
+                if ($status !== 102) {
+                    $this->SetStatus($status);
+                } elseif (IPS_GetInstance($this->InstanceID)['InstanceStatus'] === 203) {
+                    $this->ApplyChanges();
+                }
+                return;
+            }
+            foreach (self::UNITS as $unit) {
+                if (!empty($row['Output' . $unit])) {
+                    $this->RenameOutput($SenderID, $unit);
+                }
+            }
+            return;
+        }
+    }
+
+    private function GetSources(): array
+    {
+        $configured = $this->ReadPropertyString('Sources');
+        if ($configured !== '') {
+            return json_decode($configured, true) ?? [];
+        }
+        $source = $this->ReadPropertyInteger('Source');
+        if ($source <= 0) {
+            return [];
+        }
+        return [[
+            'Source' => $source,
+            'SourceUnit' => $this->ReadPropertyString('SourceUnit'),
+            'OutputW' => $this->ReadPropertyBoolean('OutputW'),
+            'OutputkW' => $this->ReadPropertyBoolean('OutputkW'),
+            'OutputA' => $this->ReadPropertyBoolean('OutputA'),
+            'Phases' => $this->ReadPropertyInteger('Phases'),
+            'Voltage1' => $this->ReadPropertyFloat('Voltage1'),
+            'Voltage3' => $this->ReadPropertyFloat('Voltage3'),
+            'PowerFactor' => $this->ReadPropertyFloat('PowerFactor')
+        ]];
+    }
+
+    private function OutputIdent(int $source, string $unit): string
+    {
+        // Keep the original output IDs for the source configured in version 1.0.
+        if ($source === $this->ReadPropertyInteger('Source')) {
+            return 'Result' . $unit;
+        }
+        return 'Result' . $source . $unit;
+    }
+
+    private function OutputName(int $source, string $unit): string
+    {
+        return IPS_GetName($source) . ' ' . ($unit === 'A' ? 'Ampere' : $unit);
+    }
+
+    private function RenameOutput(int $source, string $unit): void
+    {
+        $id = @IPS_GetObjectIDByIdent($this->OutputIdent($source, $unit), $this->InstanceID);
+        $name = $this->OutputName($source, $unit);
+        if ($id !== false && IPS_GetName($id) !== $name) {
+            IPS_SetName($id, $name);
+        }
+    }
+
+    private function EnsureProfile(string $unit): string
+    {
+        $profile = 'Wertumrechner.' . $unit;
+        if (!IPS_VariableProfileExists($profile)) {
+            IPS_CreateVariableProfile($profile, VARIABLETYPE_FLOAT);
+            IPS_SetVariableProfileText($profile, '', ' ' . $unit);
+            IPS_SetVariableProfileDigits($profile, $unit === 'kW' ? 3 : 2);
+        }
+        return $profile;
     }
 
     private function IsNumericSource(int $source): bool
@@ -68,27 +181,25 @@ class Wertumrechner extends IPSModule
         return in_array(IPS_GetVariable($source)['VariableType'], [VARIABLETYPE_INTEGER, VARIABLETYPE_FLOAT], true);
     }
 
-    private function UpdateResults(int $source): void
+    private function UpdateResults(int $source, array $row): int
     {
-        $sourceUnit = $this->ReadPropertyString('SourceUnit');
+        $sourceUnit = $row['SourceUnit'] ?? '';
         if (!in_array($sourceUnit, self::UNITS, true)) {
-            $this->SetStatus(202);
-            return;
+            return 202;
         }
 
         $needsFactor = $sourceUnit === 'A'
-            ? $this->ReadPropertyBoolean('OutputW') || $this->ReadPropertyBoolean('OutputkW')
-            : $this->ReadPropertyBoolean('OutputA');
+            ? !empty($row['OutputW']) || !empty($row['OutputkW'])
+            : !empty($row['OutputA']);
         $factor = 1.0;
         if ($needsFactor) {
-            $phases = $this->ReadPropertyInteger('Phases');
-            $voltage = $this->ReadPropertyFloat($phases === 3 ? 'Voltage3' : 'Voltage1');
-            $powerFactor = $this->ReadPropertyFloat('PowerFactor');
+            $phases = (int) ($row['Phases'] ?? 0);
+            $voltage = (float) ($row[$phases === 3 ? 'Voltage3' : 'Voltage1'] ?? 0);
+            $powerFactor = (float) ($row['PowerFactor'] ?? 0);
             $factor = ($phases === 3 ? sqrt(3.0) : 1.0) * $voltage * $powerFactor;
             if (!in_array($phases, [1, 3], true) || $voltage <= 0 || $powerFactor <= 0
                 || $powerFactor > 1 || !is_finite($factor) || $factor <= 0) {
-                $this->SetStatus(202);
-                return;
+                return 202;
             }
         }
 
@@ -104,20 +215,19 @@ class Wertumrechner extends IPSModule
         $results[$sourceUnit] = $value;
         $selected = [];
         foreach ($results as $unit => $result) {
-            if ($this->ReadPropertyBoolean('Output' . $unit)) {
+            if (!empty($row['Output' . $unit])) {
                 if (!is_finite($result)) {
-                    $this->SetStatus(203);
-                    return;
+                    return 203;
                 }
                 $selected[$unit] = $result;
             }
         }
         foreach ($selected as $unit => $result) {
-            $ident = 'Result' . $unit;
-            if ($this->GetValue($ident) !== $result) {
+            $ident = $this->OutputIdent($source, $unit);
+            if (@IPS_GetObjectIDByIdent($ident, $this->InstanceID) !== false && $this->GetValue($ident) !== $result) {
                 $this->SetValue($ident, $result);
             }
         }
-        $this->SetStatus(102);
+        return 102;
     }
 }
