@@ -1,91 +1,138 @@
 {
   "elements": [
     {
-      "type": "SelectVariable",
-      "name": "Source",
-      "caption": "Quellvariable"
-    },
-    {
-      "type": "Select",
-      "name": "SourceUnit",
-      "caption": "Einheit der Quellvariable",
-      "options": [
-        {
-          "value": "W",
-          "caption": "W"
-        },
-        {
-          "value": "kW",
-          "caption": "kW"
-        },
-        {
-          "value": "A",
-          "caption": "A"
-        }
-      ]
-    },
-    {
-      "type": "CheckBox",
-      "name": "OutputW",
-      "caption": "Ergebnis in W erstellen"
-    },
-    {
-      "type": "CheckBox",
-      "name": "OutputkW",
-      "caption": "Ergebnis in kW erstellen"
-    },
-    {
-      "type": "CheckBox",
-      "name": "OutputA",
-      "caption": "Ergebnis in A erstellen"
-    },
-    {
       "type": "Label",
-      "caption": "Für Umrechnungen zwischen Strom und Leistung"
+      "caption": "Je Quellvariable eine Zeile anlegen. Die elektrischen Einstellungen gelten für Umrechnungen zwischen Leistung und Strom."
     },
     {
-      "type": "Select",
-      "name": "Phases",
-      "caption": "Phasen",
-      "options": [
+      "type": "List",
+      "name": "Sources",
+      "caption": "Quellvariablen und Ausgaben",
+      "rowCount": 6,
+      "add": true,
+      "delete": true,
+      "loadValuesFromConfiguration": false,
+      "columns": [
         {
-          "value": 1,
-          "caption": "Einphasig"
+          "name": "Source",
+          "caption": "Quellvariable",
+          "width": "auto",
+          "add": 0,
+          "edit": {
+            "type": "SelectVariable"
+          }
         },
         {
-          "value": 3,
-          "caption": "Dreiphasig, symmetrisch"
+          "name": "SourceUnit",
+          "caption": "Quelleinheit",
+          "width": "85px",
+          "add": "W",
+          "edit": {
+            "type": "Select",
+            "options": [
+              {
+                "value": "W",
+                "caption": "W"
+              },
+              {
+                "value": "kW",
+                "caption": "kW"
+              },
+              {
+                "value": "A",
+                "caption": "A"
+              }
+            ]
+          }
+        },
+        {
+          "name": "OutputW",
+          "caption": "W",
+          "width": "60px",
+          "add": false,
+          "edit": {
+            "type": "CheckBox"
+          }
+        },
+        {
+          "name": "OutputkW",
+          "caption": "kW",
+          "width": "60px",
+          "add": true,
+          "edit": {
+            "type": "CheckBox"
+          }
+        },
+        {
+          "name": "OutputA",
+          "caption": "Ampere",
+          "width": "75px",
+          "add": false,
+          "edit": {
+            "type": "CheckBox"
+          }
+        },
+        {
+          "name": "Phases",
+          "caption": "Phasen",
+          "width": "185px",
+          "add": 1,
+          "edit": {
+            "type": "Select",
+            "options": [
+              {
+                "value": 1,
+                "caption": "Einphasig"
+              },
+              {
+                "value": 3,
+                "caption": "Dreiphasig, symmetrisch"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Voltage1",
+          "caption": "L–N (V)",
+          "width": "100px",
+          "add": 230,
+          "edit": {
+            "type": "NumberSpinner",
+            "digits": 1,
+            "minimum": 0.1
+          }
+        },
+        {
+          "name": "Voltage3",
+          "caption": "L–L (V)",
+          "width": "100px",
+          "add": 400,
+          "edit": {
+            "type": "NumberSpinner",
+            "digits": 1,
+            "minimum": 0.1
+          }
+        },
+        {
+          "name": "PowerFactor",
+          "caption": "Leistungsfaktor",
+          "width": "125px",
+          "add": 1,
+          "edit": {
+            "type": "NumberSpinner",
+            "digits": 3,
+            "minimum": 0.001,
+            "maximum": 1
+          }
         }
       ]
-    },
-    {
-      "type": "NumberSpinner",
-      "name": "Voltage1",
-      "caption": "Spannung L–N (V)",
-      "digits": 1,
-      "minimum": 0.1
-    },
-    {
-      "type": "NumberSpinner",
-      "name": "Voltage3",
-      "caption": "Spannung L–L (V)",
-      "digits": 1,
-      "minimum": 0.1
-    },
-    {
-      "type": "NumberSpinner",
-      "name": "PowerFactor",
-      "caption": "Leistungsfaktor",
-      "digits": 3,
-      "minimum": 0.001,
-      "maximum": 1
     }
   ],
   "status": [
     {
       "code": 201,
       "icon": "error",
-      "caption": "Bitte eine numerische Quellvariable außerhalb dieser Instanz auswählen."
+      "caption": "Bitte für jede Zeile eine andere numerische Quellvariable außerhalb dieser Instanz auswählen."
     },
     {
       "code": 202,
