@@ -1,14 +1,14 @@
 # IP-Symcon Wertumrechner
 
-Eine Instanz liest eine numerische Symcon-Variable und stellt die ausgewählten Ergebnisse in W, kW und A als Float-Variablen bereit. Die Berechnung läuft beim Speichern und bei Aktualisierungen der Quellvariable.
+Eine Instanz liest mehrere numerische Symcon-Variablen und stellt die ausgewählten Ergebnisse in W, kW und A als Float-Variablen bereit. Die Berechnung läuft beim Speichern und bei Aktualisierungen einer Quellvariable.
 
 ## Installation
 
 1. In der logischen Baumansicht unter **Kern-Instanzen → Modules** das Repository hinzufügen.
 2. Eine Instanz **Wertumrechner** anlegen.
-3. Quellvariable, Quelleinheit und gewünschte Ausgaben wählen. Anschließend die Konfiguration übernehmen.
+3. In der Liste je Quellvariable eine Zeile hinzufügen und Quelleinheit, gewünschte Ausgaben sowie bei Bedarf Phasen, Spannung und Leistungsfaktor einstellen. Anschließend die Konfiguration übernehmen.
 
-Die Ausgabe in kW ist anfangs ausgewählt. Beim Abwählen einer Ausgabe entfernt Symcon die zugehörige Ergebnisvariable. Beim späteren Aktivieren wird eine neue Variable angelegt.
+Neue Zeilen starten mit aktivierter Ausgabe in kW. Die Ergebnisvariablen tragen den Namen der Quelle mit dem Zusatz W, kW oder Ampere. Bestehende Einzelkonfigurationen erscheinen als erste Zeile. Ihre Ergebnisvariablen behalten beim Update ihre IDs. Beim Abwählen einer Ausgabe entfernt Symcon die zugehörige Ergebnisvariable. Beim späteren Aktivieren wird eine neue Variable angelegt.
 
 ## Berechnung
 
