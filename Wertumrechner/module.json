@@ -1,0 +1,12 @@
+{
+  "id": "{FB9CC782-F75F-4626-B98D-5BA167539BF1}",
+  "name": "Wertumrechner",
+  "type": 3,
+  "vendor": "",
+  "aliases": [],
+  "parentRequirements": [],
+  "childRequirements": [],
+  "implemented": [],
+  "prefix": "WUR",
+  "url": "https://github.com/BarrelBoyyyy/IPSymcon-Wertumrechner"
+}
