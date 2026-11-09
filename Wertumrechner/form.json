@@ -1,0 +1,101 @@
+{
+  "elements": [
+    {
+      "type": "SelectVariable",
+      "name": "Source",
+      "caption": "Quellvariable"
+    },
+    {
+      "type": "Select",
+      "name": "SourceUnit",
+      "caption": "Einheit der Quellvariable",
+      "options": [
+        {
+          "value": "W",
+          "caption": "W"
+        },
+        {
+          "value": "kW",
+          "caption": "kW"
+        },
+        {
+          "value": "A",
+          "caption": "A"
+        }
+      ]
+    },
+    {
+      "type": "CheckBox",
+      "name": "OutputW",
+      "caption": "Ergebnis in W erstellen"
+    },
+    {
+      "type": "CheckBox",
+      "name": "OutputkW",
+      "caption": "Ergebnis in kW erstellen"
+    },
+    {
+      "type": "CheckBox",
+      "name": "OutputA",
+      "caption": "Ergebnis in A erstellen"
+    },
+    {
+      "type": "Label",
+      "caption": "Für Umrechnungen zwischen Strom und Leistung"
+    },
+    {
+      "type": "Select",
+      "name": "Phases",
+      "caption": "Phasen",
+      "options": [
+        {
+          "value": 1,
+          "caption": "Einphasig"
+        },
+        {
+          "value": 3,
+          "caption": "Dreiphasig, symmetrisch"
+        }
+      ]
+    },
+    {
+      "type": "NumberSpinner",
+      "name": "Voltage1",
+      "caption": "Spannung L–N (V)",
+      "digits": 1,
+      "minimum": 0.1
+    },
+    {
+      "type": "NumberSpinner",
+      "name": "Voltage3",
+      "caption": "Spannung L–L (V)",
+      "digits": 1,
+      "minimum": 0.1
+    },
+    {
+      "type": "NumberSpinner",
+      "name": "PowerFactor",
+      "caption": "Leistungsfaktor",
+      "digits": 3,
+      "minimum": 0.001,
+      "maximum": 1
+    }
+  ],
+  "status": [
+    {
+      "code": 201,
+      "icon": "error",
+      "caption": "Bitte eine numerische Quellvariable außerhalb dieser Instanz auswählen."
+    },
+    {
+      "code": 202,
+      "icon": "error",
+      "caption": "Bitte Einheit, Phasen, Spannung und Leistungsfaktor prüfen."
+    },
+    {
+      "code": 203,
+      "icon": "error",
+      "caption": "Das Ergebnis liegt außerhalb des darstellbaren Zahlenbereichs."
+    }
+  ]
+}
